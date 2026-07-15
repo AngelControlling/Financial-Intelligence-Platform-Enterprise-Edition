@@ -1,0 +1,47 @@
+{
+  "version_id": "budget_20260715_092413_325b8c",
+  "dataset_type": "budget",
+  "version_label": "Original FY2026",
+  "source_name": "FIP_Budget_Template_v1.xlsx",
+  "sheet_name": "FIP Budget Standard",
+  "storage_file": "datasets\\budget\\budget_20260715_092413_325b8c.pkl",
+  "status": "active",
+  "rows": 42,
+  "columns": 15,
+  "quality_score": 100.0,
+  "mapping_score": 100.0,
+  "health_score": 100.0,
+  "company": "Enterprise Freight Demo",
+  "currency": "USD",
+  "period_label": "FY2026",
+  "fiscal_year": 2026,
+  "comparison_label": "Budget",
+  "warnings": [],
+  "mapped_columns": {
+    "Budget_PnL": "performance",
+    "Budget_Operations": "performance",
+    "Budget_OPEX": "opex",
+    "Budget_Personnel": "personnel",
+    "Budget_BalanceSheet": "balance_sheet"
+  },
+  "unmapped_columns": [],
+  "synthesized_columns": [],
+  "created_at": "2026-07-15T09:24:13",
+  "activated_at": "2026-07-15T09:24:15",
+  "metadata": {
+    "budget_versions": [
+      "Original"
+    ],
+    "fiscal_years": [
+      2026
+    ],
+    "currencies": [
+      "USD"
+    ],
+    "opex_storage_file": "datasets\\budget_opex\\budget_20260715_092413_325b8c.pkl",
+    "personnel_storage_file": "datasets\\budget_personnel\\budget_20260715_092413_325b8c.pkl",
+    "balance_sheet_storage_file": "datasets\\budget_balance_sheet\\budget_20260715_092413_325b8c.pkl",
+    "created_by": "FP&A / Controller",
+    "created_at": "2026-07-15T09:24:13"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "version_id": "actuals_20260715_082300_0104ef",
+  "dataset_type": "actuals",
+  "version_label": "Actuals 2026-07-15 08:22",
+  "source_name": "reporte_logistico_sap_final_v2.xlsx",
+  "sheet_name": "Shipments",
+  "storage_file": "datasets\\actuals\\actuals_20260715_082300_0104ef.pkl",
+  "status": "active",
+  "rows": 4000,
+  "columns": 35,
+  "quality_score": 100.0,
+  "mapping_score": 81.2,
+  "health_score": 94.4,
+  "company": "Enterprise Freight Demo",
+  "currency": "USD",
+  "period_label": "2025-01-12 to 2035-12-25",
+  "comparison_label": "Budget",
+  "warnings": [
+    "El archivo contiene Reserve Revenue y/o Reserve Cost, pero no Budget. Para mantener compatibilidad con el Variance Engine actual, Reserve se utilizó como baseline temporal. Las visualizaciones etiquetadas como Budget representan realmente Actual vs Reserve."
+  ],
+  "mapped_columns": {
+    "Shipment_ID": "shipment",
+    "Type": "product",
+    "Mode": "mode",
+    "TEUs": "teus",
+    "Tons": "tons",
+    "Cost": "actual_cost",
+    "Revenue": "actual_revenue",
+    "Date": "period",
+    "Origin_Country": "origin",
+    "Destination_Country": "destination",
+    "Customer": "customer",
+    "Revenue_Reserve": "reserve_revenue",
+    "Cost_Reserve": "reserve_cost"
+  },
+  "unmapped_columns": [
+    "Real_Revenue",
+    "Real_Cost",
+    "Month"
+  ],
+  "synthesized_columns": [
+    "budget_revenue",
+    "budget_cost"
+  ],
+  "created_at": "2026-07-15T08:23:00",
+  "activated_at": "2026-07-15T08:24:10",
+  "metadata": {
+    "created_by": "Controller",
+    "time_unparsed_count": 0
+  }
+}

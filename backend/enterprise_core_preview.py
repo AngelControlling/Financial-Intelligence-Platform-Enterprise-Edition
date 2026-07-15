@@ -1,0 +1,3 @@
+from core.enterprise_shell import EnterpriseShell
+from core.registry import register_placeholder_workspaces
+EnterpriseShell(register_placeholder_workspaces).run()

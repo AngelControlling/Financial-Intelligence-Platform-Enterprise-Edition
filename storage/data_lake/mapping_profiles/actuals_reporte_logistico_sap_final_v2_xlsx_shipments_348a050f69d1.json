@@ -1,0 +1,41 @@
+{
+  "profile_id": "actuals_reporte_logistico_sap_final_v2_xlsx_shipments_348a050f69d1",
+  "dataset_type": "actuals",
+  "source_name": "reporte_logistico_sap_final_v2.xlsx",
+  "sheet_name": "Shipments",
+  "schema_columns": [
+    "Shipment_ID",
+    "Type",
+    "Mode",
+    "TEUs",
+    "Tons",
+    "Cost",
+    "Revenue",
+    "Date",
+    "Origin_Country",
+    "Destination_Country",
+    "Customer",
+    "Revenue_Reserve",
+    "Cost_Reserve",
+    "Real_Revenue",
+    "Real_Cost",
+    "Month"
+  ],
+  "mapping": {
+    "Shipment_ID": "shipment",
+    "Type": "product",
+    "Mode": "mode",
+    "TEUs": "teus",
+    "Tons": "tons",
+    "Cost": "actual_cost",
+    "Revenue": "actual_revenue",
+    "Date": "period",
+    "Origin_Country": "origin",
+    "Destination_Country": "destination",
+    "Customer": "customer",
+    "Revenue_Reserve": "reserve_revenue",
+    "Cost_Reserve": "reserve_cost"
+  },
+  "confirmed_by": "Controller",
+  "updated_at": "2026-07-15T08:22:58"
+}

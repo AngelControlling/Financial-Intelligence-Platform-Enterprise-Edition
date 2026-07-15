@@ -1,0 +1,60 @@
+{
+  "version_id": "working_capital_20260715_082433_43ba0d",
+  "dataset_type": "working_capital",
+  "version_label": "Working Capital 2026-07-15 08:24",
+  "source_name": "reporte_AR_AP_v2.xlsx",
+  "sheet_name": "Multiple AR/AP Sheets",
+  "storage_file": "datasets\\working_capital\\working_capital_20260715_082433_43ba0d.pkl",
+  "status": "active",
+  "rows": 3000,
+  "columns": 20,
+  "quality_score": 100.0,
+  "mapping_score": 100.0,
+  "health_score": 100.0,
+  "company": "Enterprise Freight Demo",
+  "currency": "USD",
+  "period_label": "As-of Aging",
+  "comparison_label": "",
+  "warnings": [
+    "Document Type no venía en el archivo. Se infirió AR porque se detectó una columna Customer/Cliente.",
+    "Open Amount no venía en el archivo. Se calculó usando Amount y Status; los documentos cerrados/pagados se consideraron con saldo cero.",
+    "Document Type no venía en el archivo. Se infirió AP porque se detectó una columna Supplier/Vendor/Proveedor.",
+    "Open Amount no venía en el archivo. Se calculó usando Amount y Status; los documentos cerrados/pagados se consideraron con saldo cero."
+  ],
+  "mapped_columns": {
+    "Invoice_ID": "document_id",
+    "Customer": "counterparty",
+    "Amount": "original_amount",
+    "Status": "status",
+    "Issue_Date": "invoice_date",
+    "Due_Date": "due_date",
+    "Supplier": "counterparty"
+  },
+  "unmapped_columns": [],
+  "synthesized_columns": [
+    "business_unit",
+    "currency",
+    "document_type",
+    "open_amount",
+    "paid_amount",
+    "responsible"
+  ],
+  "created_at": "2026-07-15T08:24:33",
+  "activated_at": "2026-07-15T08:24:51",
+  "metadata": {
+    "summary": {
+      "total_open": 44464281.690000005,
+      "total_overdue": 35392599.230000004,
+      "current_amount": 9071682.46,
+      "overdue_90_plus": 14736588.060000002,
+      "ar_open": 30374228.75,
+      "ap_open": 14090052.940000001,
+      "open_documents": 2005,
+      "overdue_documents": 1612,
+      "overdue_pct": 0.7959782073339955,
+      "overdue_90_plus_pct": 0.33142530363454076,
+      "weighted_days_overdue": 62.34320152468429,
+      "counterparties": 18
+    }
+  }
+}
