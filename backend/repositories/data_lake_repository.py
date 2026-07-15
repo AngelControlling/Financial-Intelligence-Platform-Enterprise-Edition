@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from uuid import uuid4
 
@@ -13,10 +13,15 @@ from models.data_lake import DatasetVersion
 
 class DataLakeRepository:
     """
-    Local enterprise repository.
+    Cross-platform enterprise repository.
 
-    DataFrames are stored as Pickle because the current project does not
-    require pyarrow. Metadata and active-version pointers are stored as JSON.
+    DataFrames are stored as Pickle. Metadata and active-version pointers
+    are stored as JSON.
+
+    Important:
+    Metadata created on Windows can contain backslashes in storage_file.
+    Streamlit Community Cloud runs on Linux, so all stored paths are
+    normalized before access.
     """
 
     def __init__(
@@ -34,7 +39,11 @@ class DataLakeRepository:
         self.profiles_path = self.root_path / "mapping_profiles"
         self.active_file = self.root_path / "active_versions.json"
 
+        self._initialize_storage()
+
+    def _initialize_storage(self) -> None:
         for path in [
+            self.root_path,
             self.datasets_path,
             self.metadata_path,
             self.profiles_path,
@@ -66,14 +75,64 @@ class DataLakeRepository:
         file_path = dataset_dir / f"{version_id}.pkl"
         dataframe.to_pickle(file_path)
 
-        return str(file_path.relative_to(self.root_path))
+        # Always persist portable POSIX-style relative paths.
+        return file_path.relative_to(
+            self.root_path
+        ).as_posix()
 
     def load_dataframe(
         self,
         storage_file: str,
-    ) -> pd.DataFrame:
-        return pd.read_pickle(
-            self.root_path / storage_file
+    ) -> pd.DataFrame | None:
+        file_path = self._resolve_storage_file(
+            storage_file
+        )
+
+        if not file_path.exists():
+            return None
+
+        try:
+            return pd.read_pickle(file_path)
+        except (
+            FileNotFoundError,
+            OSError,
+            EOFError,
+            ValueError,
+        ):
+            return None
+
+    def _resolve_storage_file(
+        self,
+        storage_file: str,
+    ) -> Path:
+        """
+        Normalize paths saved by Windows so they work on Linux.
+
+        Example:
+        datasets\\actuals\\file.pkl
+        becomes:
+        datasets/actuals/file.pkl
+        """
+        portable = str(storage_file).replace(
+            "\\",
+            "/",
+        )
+        relative = PurePosixPath(portable)
+
+        # Prevent absolute-path metadata from escaping the data lake.
+        safe_parts = [
+            part
+            for part in relative.parts
+            if part not in {
+                "",
+                ".",
+                "..",
+                "/",
+            }
+        ]
+
+        return self.root_path.joinpath(
+            *safe_parts
         )
 
     def save_version(
@@ -82,9 +141,17 @@ class DataLakeRepository:
     ) -> None:
         metadata_dir = self.metadata_path / version.dataset_type
         metadata_dir.mkdir(parents=True, exist_ok=True)
+
+        payload = version.to_dict()
+
+        if payload.get("storage_file"):
+            payload["storage_file"] = str(
+                payload["storage_file"]
+            ).replace("\\", "/")
+
         self._write_json(
             metadata_dir / f"{version.version_id}.json",
-            version.to_dict(),
+            payload,
         )
 
     def get_version(
@@ -101,9 +168,27 @@ class DataLakeRepository:
         if not file_path.exists():
             return None
 
-        return DatasetVersion(
-            **self._read_json(file_path)
+        try:
+            payload = self._read_json(file_path)
+        except (
+            FileNotFoundError,
+            json.JSONDecodeError,
+            OSError,
+        ):
+            return None
+
+        storage_file = payload.get(
+            "storage_file"
         )
+        if storage_file:
+            payload["storage_file"] = str(
+                storage_file
+            ).replace("\\", "/")
+
+        try:
+            return DatasetVersion(**payload)
+        except TypeError:
+            return None
 
     def list_versions(
         self,
@@ -114,12 +199,27 @@ class DataLakeRepository:
         if not metadata_dir.exists():
             return []
 
-        versions = [
-            DatasetVersion(
-                **self._read_json(file_path)
-            )
-            for file_path in metadata_dir.glob("*.json")
-        ]
+        versions: list[DatasetVersion] = []
+
+        for file_path in metadata_dir.glob("*.json"):
+            try:
+                payload = self._read_json(file_path)
+
+                if payload.get("storage_file"):
+                    payload["storage_file"] = str(
+                        payload["storage_file"]
+                    ).replace("\\", "/")
+
+                versions.append(
+                    DatasetVersion(**payload)
+                )
+            except (
+                FileNotFoundError,
+                json.JSONDecodeError,
+                OSError,
+                TypeError,
+            ):
+                continue
 
         return sorted(
             versions,
@@ -142,9 +242,21 @@ class DataLakeRepository:
                 f"Version not found: {version_id}"
             )
 
-        active = self._read_json(self.active_file)
+        dataframe = self.load_dataframe(
+            version.storage_file
+        )
+        if dataframe is None:
+            raise ValueError(
+                "The selected version metadata exists, "
+                "but its dataset file is unavailable."
+            )
+
+        active = self._safe_active_versions()
         active[dataset_type] = version_id
-        self._write_json(self.active_file, active)
+        self._write_json(
+            self.active_file,
+            active,
+        )
 
         version.status = "active"
         version.activated_at = datetime.now().isoformat(
@@ -158,29 +270,54 @@ class DataLakeRepository:
         self,
         dataset_type: str,
     ) -> DatasetVersion | None:
-        active = self._read_json(self.active_file)
+        active = self._safe_active_versions()
         version_id = active.get(dataset_type)
 
         if not version_id:
             return None
 
-        return self.get_version(
+        version = self.get_version(
             dataset_type,
             version_id,
         )
+
+        if version is None:
+            self._remove_stale_active_pointer(
+                dataset_type
+            )
+            return None
+
+        if not self._resolve_storage_file(
+            version.storage_file
+        ).exists():
+            self._remove_stale_active_pointer(
+                dataset_type
+            )
+            return None
+
+        return version
 
     def load_active_dataframe(
         self,
         dataset_type: str,
     ) -> pd.DataFrame | None:
-        version = self.active_version(dataset_type)
+        version = self.active_version(
+            dataset_type
+        )
 
         if version is None:
             return None
 
-        return self.load_dataframe(
+        dataframe = self.load_dataframe(
             version.storage_file
         )
+
+        if dataframe is None:
+            self._remove_stale_active_pointer(
+                dataset_type
+            )
+
+        return dataframe
 
     def save_mapping_profile(
         self,
@@ -197,22 +334,88 @@ class DataLakeRepository:
         profile_id: str,
     ) -> dict[str, Any] | None:
         file_path = (
-            self.profiles_path / f"{profile_id}.json"
+            self.profiles_path
+            / f"{profile_id}.json"
         )
-        return (
-            self._read_json(file_path)
-            if file_path.exists()
-            else None
-        )
+
+        if not file_path.exists():
+            return None
+
+        try:
+            return self._read_json(file_path)
+        except (
+            FileNotFoundError,
+            json.JSONDecodeError,
+            OSError,
+        ):
+            return None
 
     def list_mapping_profiles(
         self,
     ) -> list[dict[str, Any]]:
-        return [
-            self._read_json(file_path)
-            for file_path
-            in self.profiles_path.glob("*.json")
-        ]
+        profiles = []
+
+        for file_path in self.profiles_path.glob(
+            "*.json"
+        ):
+            try:
+                profiles.append(
+                    self._read_json(file_path)
+                )
+            except (
+                FileNotFoundError,
+                json.JSONDecodeError,
+                OSError,
+            ):
+                continue
+
+        return profiles
+
+    def _safe_active_versions(
+        self,
+    ) -> dict[str, Any]:
+        if not self.active_file.exists():
+            self._write_json(
+                self.active_file,
+                {},
+            )
+            return {}
+
+        try:
+            payload = self._read_json(
+                self.active_file
+            )
+            return (
+                payload
+                if isinstance(payload, dict)
+                else {}
+            )
+        except (
+            FileNotFoundError,
+            json.JSONDecodeError,
+            OSError,
+        ):
+            self._write_json(
+                self.active_file,
+                {},
+            )
+            return {}
+
+    def _remove_stale_active_pointer(
+        self,
+        dataset_type: str,
+    ) -> None:
+        active = self._safe_active_versions()
+
+        if dataset_type in active:
+            active.pop(
+                dataset_type,
+                None,
+            )
+            self._write_json(
+                self.active_file,
+                active,
+            )
 
     @staticmethod
     def _write_json(
